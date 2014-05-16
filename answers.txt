@@ -1,0 +1,36 @@
+CS 143 Databases
+
+Name: Calvin Liu
+UID: 804182525
+
+Name: Darin Minamoto
+UID: 704140102
+
+	For the lab we decided to implement the exercises in order they were assigned and
+followed the javadocs on how to implement it. For catalog we decided to create our own
+table class and used the arguments of the Catalog to set the parameters of the table.
+For the tuples and other things that had multiple instances, we thought we should store
+them inside an array list of some sort to be able to iterate through them. If the file
+came with an unused library of a mapping function then we created a mapping structure
+like mapping the name to the Id of the table. Other than that we had to follow the java
+docs on the ways to implement each function.
+
+	We adjusted the code to include libraries that were not included and also
+included the other files so they could call each others' functions since things interact
+like how having access to the catalog will let you be able to obtain information about
+the tables in it. We also included library functions that were not defined like the Math
+library function or files that needed to include java.util.*. For some parts of the
+project, mostly the iterators, we sometimes created a new .java file and sometimes we
+just implemented it in the same file. It was just a choice of preference at the moment.
+
+	There shouldn't be any incomplete elements of our code except for the parts
+that indicate it is not necessary for lab 1 to finish.
+
+	We spent a few days on the project because understanding how everything was 
+connected and what contained what was confusing. Furthermore, we found the low level
+design functions to be difficult like the byte data structure in HeapFile because we have
+never used that type before or have done things concerning bytes. Byte offsets were also
+tricky when calculating how many pages and things that we of low level design. Learning
+Java was also difficult since we have not used it before and only worked with mostly C 
+and C++. The iterators were also troublesome since we needed to create another data
+structure and understand the opening and closing of a file and things like that.

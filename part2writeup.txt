@@ -1,0 +1,40 @@
+Calvin Liu 804182525
+Darin Minamoto 704140102
+
+Describe any design decisions you made, including your choice of page eviction policy. 
+If you used something other than a nested-loops join, describe the tradeoffs of the algorithm you chose.
+-Most of our decisions relies on nested loop joins because it is the easiest
+naive way of implementing the function. For the eviction page policy we chose to
+implement a LRU page eviction policy where we would loop through the array
+and inevitably grab the first one or the least recently used and evict it to make space
+for a new page. The drawback of doing this is if a huge database was given to us
+then the scan to find the least frequently used page will be bogged down by so
+much data by the fundamental locality principle.
+
+Discuss and justify any changes you made to the API.
+-Not very many changes were made besides making new data structures like arrays.
+Most of the API included calling on previously defined functions that we wrote
+for part 1 of the lab. Most of the fnuctions did not tell us what they did or
+how to implement them so it was very open. Most of the API called functions from
+other files within the simple database. No major APIs were changed besides implementing
+the necessary functions. 
+
+Describe any missing or incomplete elements of your code.
+-No parts are missing except for the parts that say not necessary for lab1 and 
+lab 2. There might be bugs that fall outside of the case tests. We ran into
+one problem where we had to use the solution implementation of SeqScan and 
+TupleDesc otherwise the SQL test did not work and output the same message.
+
+
+Describe how long you spent on the lab, and whether there was anything you found 
+particularly difficult or confusing.
+-The lab was very confusing for the second part because most of the functions
+do not explain how to use them or how to implement them. It was also very hard
+since we got a lot of system test errors and debugging these issues are hard
+because the errors deal with parts of the code that we did not implement. We spent
+a large portion of our time on the lab because it was bigger than part 1 and harder
+especially since we did not have a lot of time to look it over because we had a
+quiz and a midterm in the same week. The first part of the project was definitely
+more difficult than the second half due to the fact that the first part of the code is
+more important to the whole overall construction of the database.
+
