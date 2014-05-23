@@ -1,6 +1,6 @@
 package simpledb;
 
-import java.util.HashMap;
+import java.util.*;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -14,6 +14,12 @@ import java.util.concurrent.ConcurrentHashMap;
 public class TableStats {
 
     private static final ConcurrentHashMap<String, TableStats> statsMap = new ConcurrentHashMap<String, TableStats>();
+
+    private int ioCostPerPage;
+    private int tableid;
+    private DbFile dbFile;
+    private int numTuples;
+    private Map<String, Object> histograms;
 
     static final int IOCOSTPERPAGE = 1000;
 
@@ -85,6 +91,81 @@ public class TableStats {
         // necessarily have to (for example) do everything
         // in a single scan of the table.
         // some code goes here
+        
+        this.ioCostPerPage = ioCostPerPage;
+        this.tableid = tableid;
+        this.dbFile = Database.getCatalog().getDatabaseFile(tableid);
+        this.histograms = new HashMap<String, Object>();
+
+        Map<String, Integer> minMap = new HashMap<String, Integer>();
+        Map<String, Integer> maxMap = new HashMap<String, Integer>();
+
+        TransactionId tid = new TransactionId();
+        DbFileIterator dbIter = this.dbFile.iterator(tid);
+
+        try {
+                dbIter.open();                
+                while (dbIter.hasNext()) {
+                        Tuple tuple = dbIter.next();
+                        numTuples++;
+                        for (int i = 0; i < this.dbFile.getTupleDesc().numFields(); i++) {
+                               Field currValue = tuple.getField(i);
+                               String fieldName = this.dbFile.getTupleDesc().getFieldName(i);
+                               if (currValue.getType().compareTo(Type.INT_TYPE) == 0) {
+                                       int val = ((IntField)currValue).getValue();
+                                       //if not in minmap, set it to val, otherwise set it to the lower of the current value and val
+                                       if (!minMap.containsKey(fieldName)) { 
+                                               minMap.put(fieldName, val);
+                                       } else if (val < minMap.get(fieldName)) {
+                                               minMap.put(fieldName, val);
+                                       }
+
+                                       if (!maxMap.containsKey(fieldName)) {
+                                               maxMap.put(fieldName, val);
+                                       } else if (val > maxMap.get(fieldName)) {
+                                               maxMap.put(fieldName, val);
+                                       }
+                               }
+                        }
+                }
+        } catch (DbException e) {
+                e.printStackTrace();
+        } catch (TransactionAbortedException e) {
+                e.printStackTrace();
+        } finally {
+                dbIter.close();
+        }
+
+        dbIter = ((HeapFile)dbFile).iterator(tid);
+        try {
+                dbIter.open();
+                while (dbIter.hasNext()) {
+                        Tuple tuple = dbIter.next();
+
+                        for (int i = 0; i < this.dbFile.getTupleDesc().numFields(); i++) {
+                                String fieldName = this.dbFile.getTupleDesc().getFieldName(i);
+                                Field currValue = tuple.getField(i);
+                                if (currValue.getType().compareTo(Type.INT_TYPE) == 0) {
+                                        if (!histograms.containsKey(fieldName)) {
+                                                histograms.put(fieldName, new IntHistogram(NUM_HIST_BINS, minMap.get(fieldName), maxMap.get(fieldName)));
+                                        }
+                                        ((IntHistogram)histograms.get(fieldName)).addValue(((IntField)currValue).getValue()); // will this modify the value inside the map?
+                                } else {
+                                        if (!histograms.containsKey(fieldName)) {
+                                                histograms.put(fieldName, new StringHistogram(NUM_HIST_BINS));
+                                        }
+                                        ((StringHistogram)histograms.get(fieldName)).addValue(((StringField)currValue).getValue());
+                                }
+                        }
+                }
+        } catch (DbException e) {
+                e.printStackTrace();
+        } catch (TransactionAbortedException e) {
+                e.printStackTrace();
+        } finally {
+                dbIter.close();
+        }
+
     }
 
     /**
@@ -101,7 +182,8 @@ public class TableStats {
      */
     public double estimateScanCost() {
         // some code goes here
-        return 0;
+        //return 0;
+        return ((HeapFile) dbFile).numPages()*this.ioCostPerPage;
     }
 
     /**
@@ -115,7 +197,8 @@ public class TableStats {
      */
     public int estimateTableCardinality(double selectivityFactor) {
         // some code goes here
-        return 0;
+        //return 0;
+        return (int)(numTuples*selectivityFactor);
     }
 
     /**
@@ -130,7 +213,15 @@ public class TableStats {
      * */
     public double avgSelectivity(int field, Predicate.Op op) {
         // some code goes here
-        return 1.0;
+        //return 1.0;
+        TupleDesc desc = this.dbFile.getTupleDesc();
+        String fieldName = desc.getFieldName(field);
+
+        if (desc.getFieldType(field).compareTo(Type.INT_TYPE) == 0) {
+                return ((IntHistogram)histograms.get(fieldName)).avgSelectivity();
+        } else {
+                return ((StringHistogram)histograms.get(fieldName)).avgSelectivity();
+        }
     }
 
     /**
@@ -148,7 +239,15 @@ public class TableStats {
      */
     public double estimateSelectivity(int field, Predicate.Op op, Field constant) {
         // some code goes here
-        return 1.0;
+        //return 1.0;
+        TupleDesc desc = this.dbFile.getTupleDesc();
+        String fieldName = desc.getFieldName(field);
+
+        if (desc.getFieldType(field).compareTo(Type.INT_TYPE) == 0) {
+                return ((IntHistogram)histograms.get(fieldName)).estimateSelectivity(op, ((IntField)constant).getValue());
+        } else {
+                return ((StringHistogram)histograms.get(fieldName)).estimateSelectivity(op, ((StringField)constant).getValue());
+        }
     }
 
     /**
@@ -156,7 +255,8 @@ public class TableStats {
      * */
     public int totalTuples() {
         // some code goes here
-        return 0;
+        //return 0;
+        return numTuples;
     }
 
 }
