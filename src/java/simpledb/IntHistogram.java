@@ -1,11 +1,12 @@
 package simpledb;
 
-import java.util.Arrays;
+import java.util.*;
 
 /** A class to represent a fixed-width histogram over a single integer-based field.
  */
 public class IntHistogram {
-    private int store[];
+    //private int store[];
+    private Map<Integer, Integer> store;
     private int buckets;
     private int min;
     private int max;
@@ -31,10 +32,12 @@ public class IntHistogram {
     public IntHistogram(int buckets, int min, int max) {
     	// some code goes here
         this.buckets = buckets;
-        this.store = new int[buckets];
         this.min = min;
         this.max = max;
-        Arrays.fill(this.store, 0);
+        store = new HashMap<Integer, Integer>();
+        for (int i = 0; i < buckets; i++) {
+                store.put(i, 0);
+        }
         this.width = (int) Math.ceil((double) (this.max - this.min + 1) / this.buckets);
         this.ntups = 0;
     }
@@ -45,15 +48,9 @@ public class IntHistogram {
      */
     public void addValue(int v) {
     	// some code goes here
-        for (int i = 0; i < store.length; i++) {
-                int bucketMin = min + this.width*i;
-                int bucketMax = min + this.width*(i+1);
-                if (v >= bucketMin && v < bucketMax) {
-                        this.store[i]++;
-                        this.ntups++;
-                        break;
-                }
-        }
+        this.ntups++;
+        int index = (int)(Math.floor((int)Math.abs(v - this.min)/width));
+        store.put(index, store.get(index)+1);
     }
 
     /**
@@ -101,103 +98,56 @@ public class IntHistogram {
                         opString = "";
                         break;
         }
-        System.out.println("Selectivity of " + opString + " " + v + " is " + retVal);
+        //for debugging purposes:
+        //System.out.println("Selectivity of " + opString + " " + v + " is " + retVal);
         return retVal;
     }
     
     public double eqSelectivity(int v) {
-            for (int i = 0; i < store.length; i++) {
-                  int bucketMin = min + this.width*i;
-                  int bucketMax = min + this.width*(i+1);
-                  if (v >= bucketMin && v < bucketMax) {
-                          int height = store[i];
-                          return ((double)height/width) / ntups;
-                  }
-            }
-            return 0;
+            int index = (int)((v - this.min)/this.width);
+            if (v > this.max || v < this.min) return 0.0;
+            return ((double)store.get(index))/this.ntups;
     }
     public double leSelectivity(int v) {
-            if (v < min) { return 1; }
-            if (v >= max) { return 0; }
+            if (v < min) { return 0.0; }
+            if (v > max) { return 1.0; }
+            int index = (int)(((double)v - 1 - this.min)/this.width);
             double totalSelectivity = 0;
-            int found = Integer.MAX_VALUE;
-            for (int i = 0; i < store.length; i++) {
-                    int bucketMin = min + this.width*i;
-                    int bucketMax = min + this.width*(i+1);
-                    int height = store[i];
-                    double b_f = (double)height / ntups;
-                    if (v >= bucketMin && v < bucketMax) {
-                            found = i;
-                            double b_part = ((double)v - bucketMin) / width;
-                            double partSelectivity = b_f * b_part;
-                            totalSelectivity += partSelectivity;
-                    }
-                    if (i < found) {
-                            totalSelectivity += b_f;
-                    }
+            for (int i = index; i >= 0; i--) {
+                    totalSelectivity += store.get(i);
             }
-            System.out.println(totalSelectivity);
-            return totalSelectivity;
+            return totalSelectivity/this.ntups;
     }
     public double leEqSelectivity(int v) {
-            if (v < min) { return 1; }
-            if (v >= max) { return 0; }
+            if (v < min) { return 0.0; }
+            if (v > max) { return 1.0; }
+            int index = (int)(((double)v - this.min)/this.width);
             double totalSelectivity = 0;
-            int found = Integer.MAX_VALUE;
-            for (int i = 0; i < store.length; i++) {
-                    int bucketMin = min + this.width*i;
-                    int bucketMax = min + this.width*(i+1);
-                    int height = store[i];
-                    if (v >= bucketMin && v < bucketMax) {
-                            found = i;
-                    }
-                    if (i < found) {
-                            double b_f = (double)height / ntups;
-                            totalSelectivity += b_f;
-                    }
+            for (int i = index; i >= 0; i--) {
+                    totalSelectivity += store.get(i);
             }
-            return totalSelectivity;
+            return totalSelectivity/this.ntups;
     }
     public double grSelectivity(int v) {
-            if (v < min) { return 1; }
-            if (v >= max) { return 0; }
+            if (v < min) { return 1.0; }
+            if (v > max) { return 0.0; }
+            int index = (int)(((double)v + 1 - this.min) / this.width);
             double totalSelectivity = 0;
-            int found = Integer.MAX_VALUE;
-            for (int i = 0; i < store.length; i++) {
-                    int bucketMin = min + this.width*i;
-                    int bucketMax = min + this.width*(i+1);
-                    int height = store[i];
-                    double b_f = (double)height / ntups;
-                    if (i > found) {
-                            totalSelectivity += b_f;
-                    }
-                    if (v >= bucketMin && v < bucketMax) {
-                            found = i;
-                            double b_part = ((double)bucketMax - v) / width;
-                            double partSelectivity = b_f * b_part;
-                            totalSelectivity += partSelectivity;
-                    }
+            for (int i = index; i < this.buckets; i++) {
+                    totalSelectivity += store.get(i);
             }
-            return totalSelectivity;
+            return totalSelectivity/this.ntups;
     }
     public double grEqSelectivity(int v) {
-            if (v < min) { return 1; }
-            if (v >= max) { return 0; }
+            if (v < min) { return 1.0; }
+            if (v > max) { return 0.0; }
+            int index = (int)(((double)v - this.min) / this.width);
             double totalSelectivity = 0;
-            int found = Integer.MAX_VALUE;
-            for (int i = 0; i < store.length; i++) {
-                    int bucketMin = min + this.width*i;
-                    int bucketMax = min + this.width*(i+1);
-                    int height = store[i];
-                    if (i > found) {
-                            double b_f = (double)height / ntups;
-                            totalSelectivity += b_f;
-                    }
-                    if (v >= bucketMin && v < bucketMax) {
-                            found = i;
-                    }
+
+            for (int i = index; i < this.buckets; i++) {
+                    totalSelectivity += store.get(i);
             }
-            return totalSelectivity;
+            return totalSelectivity/this.ntups;
     }
 
     /**
