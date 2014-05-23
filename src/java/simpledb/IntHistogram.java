@@ -108,6 +108,7 @@ public class IntHistogram {
             if (v > this.max || v < this.min) return 0.0;
             return ((double)store.get(index))/this.ntups;
     }
+
     public double leSelectivity(int v) {
             if (v < min) { return 0.0; }
             if (v > max) { return 1.0; }
@@ -118,6 +119,7 @@ public class IntHistogram {
             }
             return totalSelectivity/this.ntups;
     }
+
     public double leEqSelectivity(int v) {
             if (v < min) { return 0.0; }
             if (v > max) { return 1.0; }
@@ -128,6 +130,7 @@ public class IntHistogram {
             }
             return totalSelectivity/this.ntups;
     }
+    
     public double grSelectivity(int v) {
             if (v < min) { return 1.0; }
             if (v > max) { return 0.0; }
@@ -138,6 +141,7 @@ public class IntHistogram {
             }
             return totalSelectivity/this.ntups;
     }
+
     public double grEqSelectivity(int v) {
             if (v < min) { return 1.0; }
             if (v > max) { return 0.0; }
@@ -161,7 +165,12 @@ public class IntHistogram {
     public double avgSelectivity()
     {
         // some code goes here
-        return 1.0;
+        //return 1.0;
+        double totalSelectivity = 0;
+        for (int i = 0; i < buckets; i++) {
+                totalSelectivity += store.get(i);
+        }
+        return totalSelectivity/this.ntups/this.ntups;
     }
     
     /**
