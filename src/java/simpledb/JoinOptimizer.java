@@ -160,17 +160,19 @@ public class JoinOptimizer {
         // some code goes here
         //return card <= 0 ? 1 : card;
         if (joinOp.equals(Predicate.Op.EQUALS)) {
+                //if both fields have a primary key, choose the one with the lesser cardinality
                 if (t1pkey && t2pkey) {
                         if (card1 < card2) {
                                 card = card1;
                         } else {
                                 card = card2;
                         }
-                } else if (t1pkey) {
+                } else if (t1pkey) { //if only one field is a primary key choose the other's cardinality
                         card = card2;
                 } else if (t2pkey) {
                         card = card1;
                 } else {
+                        //if no field has a primary key, then choose the one with the greater cardinality
                         if (card1 > card2) {
                                 card = card1;
                         } else {
@@ -185,6 +187,7 @@ public class JoinOptimizer {
                 } else {
                         maxCard = card2;
                 }
+                //choose the greater of the estimated cardinality and the maximum cardinality
                 if (estCard > maxCard) {
                         card = estCard;
                 } else {
