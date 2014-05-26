@@ -97,6 +97,7 @@ public class TableStats {
         this.dbFile = Database.getCatalog().getDatabaseFile(tableid);
         this.histograms = new HashMap<String, Object>();
 
+        //create HashMaps to store the mins and maxs
         Map<String, Integer> minMap = new HashMap<String, Integer>();
         Map<String, Integer> maxMap = new HashMap<String, Integer>();
 
@@ -105,6 +106,7 @@ public class TableStats {
 
         try {
                 dbIter.open();                
+                //go through the iterator and store values in the min and max maps
                 while (dbIter.hasNext()) {
                         Tuple tuple = dbIter.next();
                         numTuples++;
@@ -120,6 +122,7 @@ public class TableStats {
                                                minMap.put(fieldName, val);
                                        }
 
+                                       //if not in maxmap, set it to val, otherwise, set it to the larger of the current value and val
                                        if (!maxMap.containsKey(fieldName)) {
                                                maxMap.put(fieldName, val);
                                        } else if (val > maxMap.get(fieldName)) {
@@ -139,6 +142,7 @@ public class TableStats {
         dbIter = ((HeapFile)dbFile).iterator(tid);
         try {
                 dbIter.open();
+                //go through the iterator again and create histogram map
                 while (dbIter.hasNext()) {
                         Tuple tuple = dbIter.next();
 
@@ -146,10 +150,11 @@ public class TableStats {
                                 String fieldName = this.dbFile.getTupleDesc().getFieldName(i);
                                 Field currValue = tuple.getField(i);
                                 if (currValue.getType().compareTo(Type.INT_TYPE) == 0) {
+                                        //if integer type, use the min and max maps to create histogram
                                         if (!histograms.containsKey(fieldName)) {
                                                 histograms.put(fieldName, new IntHistogram(NUM_HIST_BINS, minMap.get(fieldName), maxMap.get(fieldName)));
                                         }
-                                        ((IntHistogram)histograms.get(fieldName)).addValue(((IntField)currValue).getValue()); // will this modify the value inside the map?
+                                        ((IntHistogram)histograms.get(fieldName)).addValue(((IntField)currValue).getValue()); 
                                 } else {
                                         if (!histograms.containsKey(fieldName)) {
                                                 histograms.put(fieldName, new StringHistogram(NUM_HIST_BINS));
