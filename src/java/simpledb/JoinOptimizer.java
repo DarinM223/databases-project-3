@@ -222,7 +222,37 @@ public class JoinOptimizer {
 
         // some code goes here
         //Replace the following
-        return joins;
+        //return joins;
+    	//Item 0 of this vector indicates the left-most, bottom-most join in a left-deep plan.
+    	
+    	//PlanCache object that stores the minimal-cost way to perform each subset join.
+    	PlanCache mincostjoin = new PlanCache();
+    	for (int k = 1; k <= joins.size(); k++) 
+    	{  
+    		//go through the vector enumerating the vector
+    		for (Set<LogicalJoinNode> s : enumerateSubsets(joins, k)) 
+    		{
+    			CostCard bestoptimization = new CostCard();
+    			bestoptimization.cost = Double.MAX_VALUE;
+    			//loop through the nodes in the vector
+    			for (LogicalJoinNode joinNode : joins) 
+    			{ 
+    				//create the best cost card. Most arguments just feed in
+    				CostCard plan = computeCostAndCardOfSubplan(stats, filterSelectivities, joinNode, s, bestoptimization.cost, mincostjoin);
+    				if (plan != null && plan.cost < bestoptimization.cost) 
+    				{
+    					//sets the best optimization if there is a better plan
+    					//than the original
+    					bestoptimization = plan;
+    					mincostjoin.addPlan(s, plan.cost, plan.card, plan.plan);
+    				}
+    			}
+    		}
+    	}
+    	if (explain) {
+    		printJoins(joins, mincostjoin, stats, filterSelectivities);
+    	}
+    	return mincostjoin.getOrder(new HashSet<LogicalJoinNode>(joins));
     }
 
     // ===================== Private Methods =================================
