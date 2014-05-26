@@ -35,10 +35,11 @@ public class IntHistogram {
         this.min = min;
         this.max = max;
         store = new HashMap<Integer, Integer>();
-        for (int i = 0; i < buckets; i++) {
+        //fill the map with zeros initially
+        for (int i = 1; i <= buckets; i++) {
                 store.put(i, 0);
         }
-        this.width = (int) Math.ceil((double) (this.max - this.min + 1) / this.buckets);
+        this.width = 1 + (int)(this.max - this.min) / this.buckets;
         this.ntups = 0;
     }
 
@@ -49,7 +50,8 @@ public class IntHistogram {
     public void addValue(int v) {
     	// some code goes here
         this.ntups++;
-        int index = (int)(Math.floor((int)Math.abs(v - this.min)/width));
+        int index = 1 + (v - this.min)/width; 
+        //increment the height of the bucket that hashes to the value
         store.put(index, store.get(index)+1);
     }
 
@@ -68,89 +70,73 @@ public class IntHistogram {
     	// some code goes here
         //return -1.0;
         double retVal = 0.0;
-        String opString;
         switch (op) {
                 case EQUALS:
                         retVal = eqSelectivity(v);
-                        opString = "EQUALS TO";
                         break;
                 case GREATER_THAN:
                         retVal = grSelectivity(v);
-                        opString = "GREATER THAN";
                         break;
                 case GREATER_THAN_OR_EQ:
-                        retVal = grEqSelectivity(v);
-                        opString = "GREATER THAN OR EQUAL TO";
+                        // a >= b is equivalent to !(a < b)
+                        retVal = 1 - leSelectivity(v);
                         break;
                 case LESS_THAN:
                         retVal = leSelectivity(v);
-                        opString = "LESS THAN";
                         break;
                 case LESS_THAN_OR_EQ:
-                        retVal = leEqSelectivity(v);
-                        opString = "LESS THAN OR EQUAL TO";
+                        // a <= b is equivalent to !(a > b)
+                        retVal = 1 - grSelectivity(v);
                         break;
                 case NOT_EQUALS:
+                        // a != b is equivalent to !(a == b)
                         retVal = 1 - eqSelectivity(v);
-                        opString = "NOT EQUAL TO";
                         break;
                 default:
-                        opString = "";
                         break;
         }
-        //for debugging purposes:
-        //System.out.println("Selectivity of " + opString + " " + v + " is " + retVal);
         return retVal;
     }
     
     public double eqSelectivity(int v) {
-            int index = (int)((v - this.min)/this.width);
+            int index = (int)((v - this.min)/this.width) + 1;
             if (v > this.max || v < this.min) return 0.0;
-            return ((double)store.get(index))/this.ntups;
+            //return (h / w) / ntups
+            return ((double)store.get(index))/ this.width / this.ntups;
     }
 
     public double leSelectivity(int v) {
             if (v < min) { return 0.0; }
             if (v > max) { return 1.0; }
-            int index = (int)(((double)v - 1 - this.min)/this.width);
+            int index = (int)((v - this.min) / this.width) + 1;
             double totalSelectivity = 0;
-            for (int i = index; i >= 0; i--) {
+            for (int i = 1; i < index; i++) {
                     totalSelectivity += store.get(i);
             }
+            //the left of bucket b is the right of bucket (b - 1) plus one
+            double b_left = ((index - 1) * this.width + this.min);
+            // b_part is (const - b_left) / w_b
+            double b_part = (v - b_left) / this.width;
+            // b contributes b_f * b_part which is b_part * h_b / ntups
+            totalSelectivity += b_part * store.get(index);
+            //divide all of the added heights by ntups
             return totalSelectivity/this.ntups;
     }
 
-    public double leEqSelectivity(int v) {
-            if (v < min) { return 0.0; }
-            if (v > max) { return 1.0; }
-            int index = (int)(((double)v - this.min)/this.width);
-            double totalSelectivity = 0;
-            for (int i = index; i >= 0; i--) {
-                    totalSelectivity += store.get(i);
-            }
-            return totalSelectivity/this.ntups;
-    }
-    
     public double grSelectivity(int v) {
             if (v < min) { return 1.0; }
             if (v > max) { return 0.0; }
-            int index = (int)(((double)v + 1 - this.min) / this.width);
+            int index = (int)((v - this.min) / this.width) + 1;
             double totalSelectivity = 0;
-            for (int i = index; i < this.buckets; i++) {
+            for (int i = index+1; i <= this.buckets; i++) {
                     totalSelectivity += store.get(i);
             }
-            return totalSelectivity/this.ntups;
-    }
-
-    public double grEqSelectivity(int v) {
-            if (v < min) { return 1.0; }
-            if (v > max) { return 0.0; }
-            int index = (int)(((double)v - this.min) / this.width);
-            double totalSelectivity = 0;
-
-            for (int i = index; i < this.buckets; i++) {
-                    totalSelectivity += store.get(i);
-            }
+            double b_right = index * this.width + this.min - 1;
+            // b_part is (b_right - const) / w_b
+            double b_part = (double)(b_right - v) / this.width;
+            // b contributes b_f * b_part which is b_part * h_b / ntups
+            totalSelectivity += b_part * store.get(index);
+            //divide all of the added heights by ntups
             return totalSelectivity/this.ntups;
     }
 
@@ -166,10 +152,15 @@ public class IntHistogram {
     {
         // some code goes here
         //return 1.0;
+
+        //Expected selectivity: (h_1 * h_1 + h_2 * h_2 + ... + h_n * h_n) / (ntups * ntups)
+        
         double totalSelectivity = 0;
-        for (int i = 0; i < buckets; i++) {
-                totalSelectivity += store.get(i);
+        // add heights of each bucket squared (h_1 * h_1 + h_2 * h_2 + ... + h_n * h_n)
+        for (int i = 1; i <= buckets; i++) {
+                totalSelectivity += (store.get(i) * store.get(i));
         }
+        //divide the total by ntups squared (ntups * ntups)
         return totalSelectivity/this.ntups/this.ntups;
     }
     
