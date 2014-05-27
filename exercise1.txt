@@ -1,0 +1,23 @@
+-The simpledb is populated from the text file
+-loads the schema for the catalog
+-Essentially loads the tables and for each table, matches metadata
+to the table including the tableid, the pageid, records, IO cost, etc.
+-The statistics for the histogram are set up for the processing
+-Then after setting up the environment, database processes the next statement in the form of a stream
+
+-The next statement is processed whether it is an insert, delete, or a
+regular query statement and a physical/logical plan is made for the 
+query. 
+-The query is then executed based on the set up that is made
+
+List of things that happen before the execute in the handleQueryStatement:
+-Before the physical plan is made though, the physical and logical plan needs to be set up for 
+optimization. 
+-The query creates a tree for logical processing in the handleQueryStatement
+-Estimations of the scanCost and Selectivity are made based on this physical tree
+-The estimations are then sent to the filter selectives and using the combination
+of the filter selectives, the physical plan and the table stats, the order joins
+are made
+-the cost is then computed and the estimation is calculated. A rearrangement of the
+physical plan can be made to create a lower IO cost and this repeats until 
+a smaller cost cannot be computed. Then the query is executed.

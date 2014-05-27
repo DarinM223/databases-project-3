@@ -1,0 +1,51 @@
+CS 143 Databases
+
+Name: Calvin Liu
+UID: 804182525
+
+Name: Darin Minamoto
+UID: 704140102
+
+-For our method of selectivity estimation, we followed the directions on the spec where we did a
+left deep join whose cost is 
+scancost(t1) + scancost(t2) + joincost(t1 join t2) +
+scancost(t3) + joincost((t1 join t2) join t3) +
+... 
+We computed the minimum and maximum values for every field and used a hashmap for it
+We then made a histogram for every field using an even distribution for the number of buckets.
+The width of the buckets is described as 
+this.width = 1 + (int)(this.max - this.min) / this.buckets;
+Then we scanned the table again and distributed the tuples into the buckets
+The selectivity we used was the (h/w)/ntups with h/w represents the expected number of tuples
+in the bin with the v value
+We had b contain a fraction h_b / ntups. The right side of the bars in the histogram would be
+b_right - v / w_b and the same thing goes for the left side
+The implementation method is similar to the bar chart disagram shown on the spec.
+
+- For the JoinOptimizer, most of the arguments you just had to feed through to the
+computeCostAndCardOfSubplan function. We had to read the spec to understand some of the functions like
+CostCard and the plancache. Most of the API was already provided and we just needed to iterate through
+the vector correctly and check the cost of that plan and reduce it if possible.
+
+For IntHistogram, we used a HashMap from Integer to Integer (key is the bucket index, and value is 
+the height of the bucket) with all of the buckets with an initial height of 0. Whenever we added a value,
+we incremented the height of the bucket that hashes from the value v. We implemented selectivity estimation
+from the spec as described earlier. For the average selectivity we added the heights of each bucket squared
+and divided by the number of tuples squared which is what the spec said was how it should be calculated.
+
+For the TableStats, we created a hashmap to store the minimum and the maximum values of the tables.
+Then we went through the iterator and stored the values in the min and max maps. Then we compared the
+field name cost with the hash map to see if it was in the map. If it is then it is already the
+minimum cost and if it is not, we set the value. The same concept goes for the max cost hashmap. Then
+we can go through the hashmap and set up the histogram map.
+
+- Our code should work for all of the systemtest cases and still work for the individual test cases.
+Our code should also be able to pass the previous projects test cases. We may be missing things in what
+the optimizer actually does in the trace through part of the project where we have to talk about what is 
+going on because we might have not fully understood the code that was already there which might not have
+affected the way we implemented our code.
+
+- The most difficult part would be understanding how optimization works because the concepts learned in
+class is different than actually coding it. We also don't have a diagram of the logical plan to see
+if it is the best option. In order to build this, we need to follow the code in how the tree is
+constructed and then be able to modify the execution of the query through java coding. 
